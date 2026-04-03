@@ -1,0 +1,39 @@
+name: NodeJS Security-First Build with Webpack
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build_and_scan:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        # เน้น LTS Versions เพื่อความเสถียรในเชิงธุรกิจ
+        node-version: [20.x, 22.x]
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm' # เปิดใช้งาน Caching อัตโนมัติ
+
+    - name: Install Dependencies
+      run: npm ci # ใช้ ci แทน install เพื่อความแม่นยำของ version (Lockfile)
+
+    - name: Security Scan (npm audit)
+      run: npm audit --audit-level=high
+      continue-on-error: false # หยุดการ Build ทันทีหากพบช่องโหว่ร้ายแรง
+
+    - name: Webpack Build
+      run: npx webpack --mode production
+
+    - name: Run Static Analysis (Linting)
+      run: npm run lint # แนะนำให้เพิ่ม ESLint เพื่อ Debugging เบื้องต้น
